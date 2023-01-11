@@ -22,7 +22,6 @@ typedef struct weatherData {
   int16_t weatherConditionCode;
   bool isMetric;
   String weatherDescription;
-  bool external;
 } weatherData;
 
 typedef struct watchySettings {
@@ -76,8 +75,9 @@ public:
   void updateFWBegin();
 
   void showWatchFace(bool partialRefresh);
-  virtual void drawWatchFace(); // override this method for different watch
-                                // faces
+  virtual void drawWatchFace(); // override this method for different watch faces
+  virtual void onInit(void);
+  virtual void handleButton(uint64_t button, bool onFace);
 
 private:
   void _bmaConfig();

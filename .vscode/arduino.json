@@ -1,0 +1,7 @@
+{
+    "configuration": "Revision=v20,PartitionScheme=huge_app,UploadSpeed=921600,DebugLevel=none,EraseFlash=none",
+    "board": "esp32:esp32:watchy",
+    "port": "/dev/tty.usbserial-1130",
+    "programmer": "esptool",
+    "sketch": "7_SEG_MFP.ino"
+}

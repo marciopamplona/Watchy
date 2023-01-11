@@ -23,9 +23,10 @@ void Watchy::init(String datetime) {
 
   // Init the display here for all cases, if unused, it will do nothing
   display.epd2.selectSPI(SPI, SPISettings(20000000, MSBFIRST, SPI_MODE0)); // Set SPI to 20Mhz (default is 4Mhz)
-  display.init(0, displayFullInit, 10,
-               true); // 10ms by spec, and fast pulldown reset
+  display.init(0, displayFullInit, 8, true); // 10ms by spec, and fast pulldown reset
   display.epd2.setBusyCallback(displayBusyCallback);
+
+  onInit();
 
   switch (wakeup_reason) {
   case ESP_SLEEP_WAKEUP_EXT0: // RTC Alarm
@@ -60,11 +61,13 @@ void Watchy::init(String datetime) {
     gmtOffset = settings.gmtOffset;
     RTC.read(currentTime);
     showWatchFace(false); // full update on reset
-    vibMotor(75, 4);
+    vibMotor(35, 4);
     break;
   }
   deepSleep();
 }
+
+void Watchy::onInit(void) {}
 
 void Watchy::displayBusyCallback(const void *) {
   gpio_wakeup_enable((gpio_num_t)DISPLAY_BUSY, GPIO_INTR_LOW_LEVEL);
@@ -94,15 +97,17 @@ void Watchy::deepSleep() {
   esp_deep_sleep_start();
 }
 
+void Watchy::handleButton(uint64_t button, bool onFace) {}
+
 void Watchy::handleButtonPress() {
   uint64_t wakeupBit = esp_sleep_get_ext1_wakeup_status();
   // Menu Button
   if (wakeupBit & MENU_BTN_MASK) {
-    if (guiState ==
-        WATCHFACE_STATE) { // enter menu state if coming from watch face
+    if (guiState == WATCHFACE_STATE) { // enter menu state if coming from watch face
+      handleButton(MENU_BTN_MASK, true);
       showMenu(menuIndex, false);
-    } else if (guiState ==
-               MAIN_MENU_STATE) { // if already in menu, then select menu item
+    } else if (guiState == MAIN_MENU_STATE) { // if already in menu, then select menu item
+      handleButton(MENU_BTN_MASK, false);
       switch (menuIndex) {
       case 0:
         showAbout();
@@ -135,37 +140,45 @@ void Watchy::handleButtonPress() {
   // Back Button
   else if (wakeupBit & BACK_BTN_MASK) {
     if (guiState == MAIN_MENU_STATE) { // exit to watch face if already in menu
+      handleButton(BACK_BTN_MASK, false);
       RTC.read(currentTime);
       showWatchFace(false);
     } else if (guiState == APP_STATE) {
+      handleButton(BACK_BTN_MASK, false);
       showMenu(menuIndex, false); // exit to menu if already in app
     } else if (guiState == FW_UPDATE_STATE) {
+      handleButton(BACK_BTN_MASK, false);
       showMenu(menuIndex, false); // exit to menu if already in app
     } else if (guiState == WATCHFACE_STATE) {
+      handleButton(BACK_BTN_MASK, true);
       return;
     }
   }
   // Up Button
   else if (wakeupBit & UP_BTN_MASK) {
     if (guiState == MAIN_MENU_STATE) { // increment menu index
+      handleButton(UP_BTN_MASK, false);
       menuIndex--;
       if (menuIndex < 0) {
         menuIndex = MENU_LENGTH - 1;
       }
       showMenu(menuIndex, true);
     } else if (guiState == WATCHFACE_STATE) {
+      handleButton(UP_BTN_MASK, true);
       return;
     }
   }
   // Down Button
-  else if (wakeupBit & DOWN_BTN_MASK) {
+  else if (DOWN_BTN_MASK) {
     if (guiState == MAIN_MENU_STATE) { // decrement menu index
+      handleButton(DOWN_BTN_MASK, false);
       menuIndex++;
       if (menuIndex > MENU_LENGTH - 1) {
         menuIndex = 0;
       }
       showMenu(menuIndex, true);
     } else if (guiState == WATCHFACE_STATE) {
+      handleButton(DOWN_BTN_MASK, true);
       return;
     }
   }
@@ -251,6 +264,7 @@ void Watchy::handleButtonPress() {
 void Watchy::showMenu(byte menuIndex, bool partialRefresh) {
   display.setFullWindow();
   display.fillScreen(GxEPD_BLACK);
+  display.invertDisplay(true);
   display.setFont(&FreeMonoBold9pt7b);
 
   int16_t x1, y1;
@@ -640,7 +654,6 @@ weatherData Watchy::getWeatherData(String cityID, String units, String lang,
             int(responseObject["weather"][0]["id"]);
         currentWeather.weatherDescription =
 	  JSONVar::stringify(responseObject["weather"][0]["main"]);
-	    currentWeather.external = true;
         // sync NTP during weather API call and use timezone of city
         gmtOffset = int(responseObject["timezone"]);
         syncNTP(gmtOffset);
@@ -658,7 +671,6 @@ weatherData Watchy::getWeatherData(String cityID, String units, String lang,
       }
       currentWeather.temperature          = temperature;
       currentWeather.weatherConditionCode = 800;
-      currentWeather.external             = false;
     }
     weatherIntervalCounter = 0;
   } else {
@@ -809,8 +821,6 @@ void Watchy::setupWifi() {
   } else {
     display.println("Connected to");
     display.println(WiFi.SSID());
-		display.println("Local IP:");
-		display.println(WiFi.localIP());
   }
   display.display(false); // full refresh
   // turn off radios
@@ -832,8 +842,6 @@ void Watchy::_configModeCallback(WiFiManager *myWiFiManager) {
   display.println(WIFI_AP_SSID);
   display.print("IP: ");
   display.println(WiFi.softAPIP());
-	display.println("MAC address:");
-	display.println(WiFi.softAPmacAddress().c_str());
   display.display(false); // full refresh
 }
 

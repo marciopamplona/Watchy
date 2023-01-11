@@ -1,0 +1,9 @@
+{
+  "files.associations": {
+    "ios": "cpp",
+    "__locale": "cpp"
+  },
+  "arduino.commandPath": "arduino-cli",
+  "arduino.path": "/opt/homebrew/bin/",
+  "arduino.useArduinoCli": true
+}
