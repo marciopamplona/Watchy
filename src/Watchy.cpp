@@ -169,7 +169,7 @@ void Watchy::handleButtonPress() {
     }
   }
   // Down Button
-  else if (DOWN_BTN_MASK) {
+  else if (wakeupBit & DOWN_BTN_MASK) {
     if (guiState == MAIN_MENU_STATE) { // decrement menu index
       handleButton(DOWN_BTN_MASK, false);
       menuIndex++;
@@ -264,7 +264,6 @@ void Watchy::handleButtonPress() {
 void Watchy::showMenu(byte menuIndex, bool partialRefresh) {
   display.setFullWindow();
   display.fillScreen(GxEPD_BLACK);
-  display.invertDisplay(true);
   display.setFont(&FreeMonoBold9pt7b);
 
   int16_t x1, y1;
@@ -654,6 +653,7 @@ weatherData Watchy::getWeatherData(String cityID, String units, String lang,
             int(responseObject["weather"][0]["id"]);
         currentWeather.weatherDescription =
 	  JSONVar::stringify(responseObject["weather"][0]["main"]);
+	      currentWeather.external = true;
         // sync NTP during weather API call and use timezone of city
         gmtOffset = int(responseObject["timezone"]);
         syncNTP(gmtOffset);
@@ -671,6 +671,7 @@ weatherData Watchy::getWeatherData(String cityID, String units, String lang,
       }
       currentWeather.temperature          = temperature;
       currentWeather.weatherConditionCode = 800;
+      currentWeather.external             = false;
     }
     weatherIntervalCounter = 0;
   } else {
@@ -821,6 +822,8 @@ void Watchy::setupWifi() {
   } else {
     display.println("Connected to");
     display.println(WiFi.SSID());
+    display.println("Local IP:");
+		display.println(WiFi.localIP());
   }
   display.display(false); // full refresh
   // turn off radios
@@ -842,6 +845,8 @@ void Watchy::_configModeCallback(WiFiManager *myWiFiManager) {
   display.println(WIFI_AP_SSID);
   display.print("IP: ");
   display.println(WiFi.softAPIP());
+  display.println("MAC address:");
+	display.println(WiFi.softAPmacAddress().c_str());
   display.display(false); // full refresh
 }
 
